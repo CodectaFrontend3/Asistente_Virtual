@@ -1,0 +1,40 @@
+# ===================================
+# EMBEDDING SERVICE
+# ===================================
+
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+# PyTorch
+torch==2.10.0
+torchvision==0.25.0
+torchaudio==2.10.0
+
+# Vectores GPU
+faiss-gpu-cu12==1.13.2
+
+# Embeddings
+sentence-transformers==5.2.2
+
+# Base
+numpy==1.26.4
+
+# Framework
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+pydantic==2.6.1
+pydantic-settings==2.1.0
+
+# gRPC
+grpcio==1.60.0
+grpcio-tools==1.60.0
+
+# Utils
+python-multipart==0.0.9
+typing-extensions>=4.9.0
+pyyaml==6.0.1
+python-json-logger==2.0.7
+
+# Testing
+pytest==8.0.0
+pytest-asyncio==0.23.5
+pytest-grpc==0.8.0

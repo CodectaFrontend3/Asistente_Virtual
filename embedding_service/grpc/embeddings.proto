@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package embeddings;
+
+service EmbeddingService {
+  rpc GenerateEmbedding(EmbeddingRequest) returns (EmbeddingResponse);
+  rpc GenerateBatch(BatchRequest) returns (BatchResponse);
+  rpc HealthCheck(Empty) returns (HealthResponse);
+}
+
+message EmbeddingRequest {
+  string text = 1;
+  bool normalize = 2;
+}
+
+message EmbeddingResponse {
+  repeated float embedding = 1;
+  int32 dimension = 2;
+}
+
+message BatchRequest {
+  repeated string texts = 1;
+  int32 batch_size = 2;
+  bool normalize = 3;
+}
+
+message BatchResponse {
+  repeated FloatList embeddings = 1;
+  int32 dimension = 2;
+  int32 count = 3;
+}
+
+message FloatList {
+  repeated float values = 1;
+}
+
+message Empty {}
+
+message HealthResponse {
+  string status = 1;
+  string device = 2;
+}
