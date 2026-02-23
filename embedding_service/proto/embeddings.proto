@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package embeddings;
+
+// Servicio de generación de embeddings
+service EmbeddingService {
+  // Genera un solo embedding
+  rpc GenerateEmbedding (EmbeddingRequest) returns (EmbeddingResponse);
+  
+  // Genera múltiples embeddings en batch
+  rpc GenerateBatch (BatchRequest) returns (BatchResponse);
+  
+  // Health check simple
+  rpc HealthCheck (Empty) returns (HealthResponse);
+  
+  // Estadísticas del servicio
+  rpc GetStats (Empty) returns (StatsResponse);
+}
+
+// Request para un solo embedding
+message EmbeddingRequest {
+  string text = 1;
+  bool normalize = 2;
+}
+
+// Response con un solo embedding
+message EmbeddingResponse {
+  repeated float embedding = 1;
+  int32 dimension = 2;
+  string device = 3;
+  float processing_time_ms = 4;
+}
+
+// Request para batch de embeddings
+message BatchRequest {
+  repeated string texts = 1;
+  int32 batch_size = 2;
+  bool normalize = 3;
+}
+
+// Lista de floats para embeddings
+message FloatList {
+  repeated float values = 1;
+}
+
+// Response con batch de embeddings
+message BatchResponse {
+  repeated FloatList embeddings = 1;
+  int32 dimension = 2;
+  int32 count = 3;
+  string device = 4;
+  float processing_time_ms = 5;
+}
+
+// Mensaje vacío
+message Empty {}
+
+// Response de health check
+message HealthResponse {
+  string status = 1;
+  bool model_loaded = 2;
+  string model_name = 3;
+  int32 embedding_dimension = 4;
+  string device = 5;
+}
+
+// Response de estadísticas
+message StatsResponse {
+  int32 inference_count = 1;
+  string model_name = 2;
+  int32 embedding_dimension = 3;
+  string device = 4;
+  int32 cpu_count_physical = 5;
+  int32 cpu_count_logical = 6;
+  float ram_total_gb = 7;
+  float ram_used_gb = 8;
+  float ram_percent = 9;
+}

@@ -1,40 +1,76 @@
 # ===================================
-# EMBEDDING SERVICE
+# EMBEDDING SERVICE - CPU ONLY
+# Verificado: Febrero 2026
+# Python 3.11.9 requerido
 # ===================================
 
---extra-index-url https://download.pytorch.org/whl/cu128
+# ----------------------------------
+# PYTORCH CPU (Sin CUDA)
+# ----------------------------------
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.10.0+cpu
+torchvision==0.25.0+cpu
+torchaudio==2.10.0+cpu
 
-# PyTorch
-torch==2.10.0
-torchvision==0.25.0
-torchaudio==2.10.0
+# ----------------------------------
+# VECTORES Y EMBEDDINGS
+# ----------------------------------
+# FAISS para busqueda vectorial (CPU)
+faiss-cpu==1.13.2
 
-# Vectores GPU
-faiss-gpu-cu12==1.13.2
-
-# Embeddings
+# Sentence Transformers (generacion de embeddings)
 sentence-transformers==5.2.2
 
-# Base
-numpy==1.26.4
+# Dependencias de sentence-transformers
+transformers>=4.45.0
+huggingface-hub>=0.26.0
+tokenizers>=0.20.0
 
-# Framework
-fastapi==0.109.2
-uvicorn[standard]==0.27.1
-pydantic==2.6.1
-pydantic-settings==2.1.0
+# ----------------------------------
+# PROCESAMIENTO NUMERICO
+# ----------------------------------
+numpy>=1.26.4,<2.3.0
+scikit-learn>=1.6.1
+scipy>=1.11.0
 
+# ----------------------------------
+# FRAMEWORK WEB
+# ----------------------------------
+fastapi==0.115.12
+uvicorn[standard]==0.33.0
+pydantic==2.10.6
+pydantic-settings==2.7.1
+
+# ----------------------------------
 # gRPC
-grpcio==1.60.0
-grpcio-tools==1.60.0
+# ----------------------------------
+grpcio==1.69.0
+grpcio-tools==1.69.0
 
-# Utils
-python-multipart==0.0.9
-typing-extensions>=4.9.0
-pyyaml==6.0.1
-python-json-logger==2.0.7
+# ----------------------------------
+# UTILIDADES
+# ----------------------------------
+python-multipart==0.0.20
+typing-extensions>=4.12.0
+pyyaml==6.0.2
+python-json-logger==3.2.1
+tqdm>=4.66.0
+cachetools==7.0.1
 
-# Testing
-pytest==8.0.0
-pytest-asyncio==0.23.5
-pytest-grpc==0.8.0
+# Monitoreo de CPU y RAM
+psutil==6.1.1
+
+# ----------------------------------
+# TESTING
+# ----------------------------------
+pytest==8.3.4
+pytest-asyncio==0.25.2
+httpx==0.28.1
+pytest-cov==6.0.0
+
+# ----------------------------------
+# DESARROLLO (Opcional)
+# ----------------------------------
+black==25.1.0
+flake8==7.1.1
+mypy==1.14.1

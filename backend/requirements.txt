@@ -1,56 +1,95 @@
 # ===================================
 # BACKEND PRINCIPAL
+# Verificado: Febrero 2026
+# Python 3.11.9 requerido
 # ===================================
 
-# Framework API
-fastapi==0.109.2
-uvicorn[standard]==0.27.1
-pydantic==2.6.1
-pydantic-settings==2.1.0
+# ----------------------------------
+# FRAMEWORK WEB
+# ----------------------------------
+fastapi==0.115.12
+uvicorn[standard]==0.33.0
+pydantic==2.10.6
+pydantic-settings==2.7.1
 
-# gRPC (comunicación rápida con Embedding Service)
-grpcio==1.60.0
-grpcio-tools==1.60.0
+# ----------------------------------
+# gRPC (Comunicacion con microservicios)
+# ----------------------------------
+grpcio==1.69.0
+grpcio-tools==1.69.0
 
-# HTTP Clients
-httpx==0.26.0
-requests==2.31.0
+# ----------------------------------
+# HTTP CLIENTS
+# ----------------------------------
+httpx[http2]==0.28.1
+requests==2.32.3
 
-# Async Workers
-celery[redis]==5.3.6
-redis==5.0.1
+# ----------------------------------
+# ASYNC WORKERS & CACHE
+# ----------------------------------
+# Celery (tareas asincronas)
+celery[redis]==5.6.2
 
-# 🔍 BÚSQUEDA HÍBRIDA
-faiss-cpu==1.7.4                    # FAISS sin GPU (solo lectura)
-rank-bm25==0.2.2                    # BM25 search
-chromadb==0.4.22                    # ChromaDB client
+# Redis (cache y message broker)
+# IMPORTANTE: Kombu 5.6.2 requiere redis <6.5
+redis==6.4.0
 
-# Procesamiento texto
-nltk==3.8.1                         # Tokenización
-scikit-learn==1.4.0                 # TF-IDF utilities
+# Cache en memoria
+cachetools==5.5.0
 
-# Cache
-cachetools==5.3.2                   # LRU cache
-python-json-logger==2.0.7
+# ----------------------------------
+# BUSQUEDA HIBRIDA
+# ----------------------------------
+# FAISS (busqueda vectorial)
+faiss-cpu==1.13.2
 
+# BM25 (busqueda por palabras clave)
+rank-bm25==0.2.2
+
+# ChromaDB (vector database)
+chromadb==1.5.0
+
+# ----------------------------------
+# PROCESAMIENTO DE TEXTO
+# ----------------------------------
+nltk==3.9.1
+scikit-learn==1.6.1
+
+# ----------------------------------
+# RESILIENCIA
+# ----------------------------------
 # Circuit Breaker
-pybreaker==1.0.1
+pybreaker==1.2.0
 
-# Utils
-python-multipart==0.0.9
-typing-extensions>=4.9.0
-pyyaml==6.0.1
+# ----------------------------------
+# UTILIDADES
+# ----------------------------------
+python-multipart==0.0.20
+typing-extensions>=4.12.0
+pyyaml==6.0.2
+python-json-logger==3.2.1
 
-# Monitoring
-prometheus-client==0.19.0
+# ----------------------------------
+# MONITORING
+# ----------------------------------
+prometheus-client==0.21.1
 
-# Testing
-pytest==8.0.0
-pytest-asyncio==0.23.5
-pytest-cov==4.1.0
-pytest-benchmark==4.0.0             # Benchmark latencia
+# ----------------------------------
+# TESTING
+# ----------------------------------
+pytest==8.3.4
+pytest-asyncio==0.25.2
+pytest-cov==6.0.0
+pytest-benchmark==5.1.0
 
-# Linting
-black==24.1.1
-flake8==7.0.0
-mypy==1.8.0
+# ----------------------------------
+# LINTING & CODE QUALITY
+# ----------------------------------
+black==25.1.0
+flake8==7.1.1
+mypy==1.14.1
+
+# ----------------------------------
+# LLM CLIENT
+# ----------------------------------
+ollama==0.6.1

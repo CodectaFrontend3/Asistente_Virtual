@@ -1,0 +1,183 @@
+# ===================================
+# CPU CONFIGURATION
+# Optimizado para procesamiento con CPU
+# ===================================
+
+compute:
+  # Dispositivo de computación
+  device: "cpu"
+  
+  # Hilos de CPU
+  # null = auto-detect (recomendado)
+  # número = forzar cantidad de hilos
+  num_threads: null
+  
+  # Modelo de embeddings
+  embedding_model:
+    # Modelo multilingüe ligero (470MB)
+    # Alternativas:
+    #   - all-MiniLM-L6-v2 (solo inglés, más rápido)
+    #   - paraphrase-multilingual-mpnet-base-v2 (más preciso, más lento)
+    name: "paraphrase-multilingual-MiniLM-L12-v2"
+    
+    # Dispositivo
+    device: "cpu"
+    
+    # Batch size máximo (reducido para CPU)
+    # GPU puede manejar 32-64, CPU mejor 8-16
+    max_batch_size: 16
+    
+    # Longitud máxima de secuencia
+    # 512 = completo pero lento
+    # 384 = balance velocidad/calidad
+    # 256 = más rápido pero menos contexto
+    max_seq_length: 384
+    
+    # Normalización de vectores
+    # true = para búsqueda por similitud coseno
+    normalize_embeddings: true
+
+# ===================================
+# CACHE
+# ===================================
+
+cache:
+  # Habilitar cache LRU de embeddings frecuentes
+  enabled: true
+  
+  # Tamaño máximo del cache
+  # Cada embedding ~1.5KB, 1000 = ~1.5MB RAM
+  max_size: 1000
+  
+  # TTL del cache (segundos)
+  # null = sin expiración
+  ttl: null
+
+# ===================================
+# PERFORMANCE
+# ===================================
+
+performance:
+  # Auto-ajuste de batch size según carga
+  auto_adjust_batch: false
+  
+  # Timeout por inferencia (segundos)
+  inference_timeout: 30
+  
+  # Monitoreo de recursos
+  monitor_resources: true
+  
+  # Intervalo de logging de recursos (cada N inferencias)
+  log_every_n_inferences: 10
+
+# ===================================
+# LOGGING
+# ===================================
+
+logging:
+  # Nivel de logging
+  # Opciones: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  
+  # Formato
+  # json = estructurado (producción)
+  # text = legible (desarrollo)
+  format: "json"
+  
+  # Incluir timestamp
+  include_timestamp: true
+  
+  # Incluir caller info (archivo:línea)
+  include_caller: false
+
+# ===================================
+# API
+# ===================================
+
+api:
+  # Título
+  title: "Embedding Service (CPU)"
+  
+  # Descripción
+  description: "Microservicio de generación de embeddings con CPU"
+  
+  # Versión
+  version: "1.0.0"
+  
+  # Host
+  host: "0.0.0.0"
+  
+  # Puerto HTTP (FastAPI)
+  port: 8001
+  
+  # Puerto gRPC
+  grpc_port: 50051
+  
+  # Límites
+  limits:
+    # Máximo de textos por request
+    max_texts_per_request: 500
+    
+    # Timeout total del request (segundos)
+    request_timeout: 180
+    
+    # Tamaño máximo de payload (MB)
+    max_payload_mb: 10
+
+# ===================================
+# CORS
+# ===================================
+
+cors:
+  # Orígenes permitidos
+  allowed_origins:
+    - "http://localhost:8000"
+    - "http://127.0.0.1:8000"
+    - "http://localhost:3000"
+  
+  # Métodos permitidos
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "OPTIONS"
+  
+  # Headers permitidos
+  allowed_headers:
+    - "*"
+  
+  # Permitir credenciales
+  allow_credentials: true
+
+# ===================================
+# HEALTH CHECK
+# ===================================
+
+health:
+  # Habilitar endpoint de health check
+  enabled: true
+  
+  # Incluir métricas detalladas
+  include_metrics: true
+  
+  # Verificar carga del modelo
+  check_model_loaded: true
+
+# ===================================
+# NOTES
+# ===================================
+
+# Rendimiento esperado (CPU - i5 gen 11):
+# - 1 embedding:     50-80ms
+# - Batch 10:        100-150ms
+# - Batch 100:       800-1200ms
+#
+# Para mejorar rendimiento:
+# 1. Reducir max_seq_length a 256
+# 2. Usar modelo más pequeño (all-MiniLM-L6-v2)
+# 3. Aumentar batch_size si tienes RAM disponible
+# 4. Habilitar auto_adjust_batch
+#
+# IMPORTANTE:
+# - CPU es ~3-5x más lento que GPU
+# - Funcional para tienda pequeña/mediana
+# - Para producción con alto tráfico, considerar GPU
