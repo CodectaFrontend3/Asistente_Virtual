@@ -72,14 +72,14 @@ class Settings(BaseSettings):
     CELERY_TASK_TIMEOUT: int = 300            # 5 minutos
 
     # ===================================
-    # OLLAMA / LLM
+    # ZHIPU AI / GLM (reemplaza Ollama)
     # ===================================
-    OLLAMA_HOST: str = "localhost"
-    OLLAMA_PORT: int = 11434
-    OLLAMA_MODEL: str = "llama3.2:3b"
-    OLLAMA_TIMEOUT: int = 300                 # segundos
-    OLLAMA_MAX_TOKENS: int = 512
-    OLLAMA_TEMPERATURE: float = 0.1           # Bajo para respuestas consistentes
+    ZHIPU_API_KEY: str = ""
+    ZHIPU_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4/"
+    ZHIPU_MODEL: str = "glm-4.6"
+    ZHIPU_TIMEOUT: int = 30
+    ZHIPU_MAX_TOKENS: int = 512
+    ZHIPU_TEMPERATURE: float = 0.1
 
     # ===================================
     # BÚSQUEDA HÍBRIDA
@@ -147,11 +147,11 @@ class Settings(BaseSettings):
             raise ValueError(f"LOG_LEVEL debe ser uno de: {allowed}")
         return v_upper
 
-    @field_validator("OLLAMA_TEMPERATURE")
+    @field_validator("ZHIPU_TEMPERATURE")
     @classmethod
     def validate_temperature(cls, v: float) -> float:
         if not 0.0 <= v <= 2.0:
-            raise ValueError("OLLAMA_TEMPERATURE debe estar entre 0.0 y 2.0")
+         raise ValueError("ZHIPU_TEMPERATURE debe estar entre 0.0 y 2.0")
         return v
 
     @field_validator("RRF_K")
@@ -199,11 +199,6 @@ class Settings(BaseSettings):
                 f"@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
             )
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-
-    @property
-    def ollama_url(self) -> str:
-        """URL completa de Ollama."""
-        return f"http://{self.OLLAMA_HOST}:{self.OLLAMA_PORT}"
 
 
 @lru_cache()
