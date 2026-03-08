@@ -6,7 +6,7 @@ Inicializa todos los servicios en el orden correcto:
     2. Redis Cache
     3. Embedding Service (HTTP client)
     4. Índices Q&A (carga desde disco o construye)
-    5. LLM Ollama (inyecta en QAService)
+    5. LLM Zhipu AI GLM-4.6 (inyecta en QAService)
 
 Luego levanta el servidor y registra los routers.
 """
@@ -18,7 +18,6 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from config import settings
 from api.qa.router import router as qa_router
@@ -52,10 +51,9 @@ def setup_logging() -> None:
             "level": settings.LOG_LEVEL,
             "handlers": ["console"],
         },
-        # Silenciar loggers muy verbosos
         "loggers": {
-            "httpx": {"level": "WARNING"},
-            "httpcore": {"level": "WARNING"},
+            "httpx":          {"level": "WARNING"},
+            "httpcore":       {"level": "WARNING"},
             "uvicorn.access": {"level": "WARNING"},
         },
     })
@@ -74,7 +72,7 @@ async def lifespan(app: FastAPI):
         1. Redis cache
         2. Embedding HTTP client
         3. Índices Q&A (carga o construye)
-        4. LLM Ollama
+        4. LLM Zhipu AI
 
     SHUTDOWN (después del yield):
         1. Cerrar Redis
@@ -91,7 +89,10 @@ async def lifespan(app: FastAPI):
         from services.cache import setup_cache
         cache_status = await setup_cache()
         if cache_status["connected"]:
-            logger.info(f"✅ Redis: {cache_status['status']} (latency={cache_status.get('latency_ms', 0)}ms)")
+            logger.info(
+                f"✅ Redis: {cache_status['status']} "
+                f"(latency={cache_status.get('latency_ms', 0)}ms)"
+            )
         else:
             logger.warning("⚠️ Redis: modo degradado (sin cache)")
     except Exception as e:
@@ -104,7 +105,10 @@ async def lifespan(app: FastAPI):
         client = get_embedding_client()
         health = await client.health_check()
         if health.get("status") == "healthy":
-            logger.info(f"✅ Embedding Service: healthy ({settings.embedding_service_http_url})")
+            logger.info(
+                f"✅ Embedding Service: healthy "
+                f"({settings.embedding_service_http_url})"
+            )
         else:
             logger.warning(f"⚠️ Embedding Service: {health}")
     except Exception as e:
@@ -113,13 +117,8 @@ async def lifespan(app: FastAPI):
     # ── 3. ÍNDICES Q&A ────────────────────────────────────────────────
     logger.info("🗂️ [3/4] Cargando índices Q&A...")
     try:
-        from services.qa import get_qa_service
-        qa_service = get_qa_service()
-
-        # Intentar cargar desde disco
-        # Si no existen, QAService queda en is_ready=False
-        # Los índices se construyen manualmente con el script build_qa_index.py
-        from services.qa import get_faiss_manager
+        from services.qa import get_qa_service, get_faiss_manager
+        qa_service   = get_qa_service()
         faiss_manager = get_faiss_manager()
         loaded = await faiss_manager.load_indexes()
 
@@ -139,23 +138,28 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ Error cargando índices: {e}")
 
-    # ── 4. LLM OLLAMA ─────────────────────────────────────────────────
-    logger.info("🦙 [4/4] Conectando con Ollama LLM...")
+    # ── 4. LLM ZHIPU AI ───────────────────────────────────────────────
+    logger.info("🤖 [4/4] Conectando con Zhipu AI (GLM-4.6)...")
     try:
         from services.llm import setup_llm
         llm_status = await setup_llm()
 
         if llm_status["llm_injected"]:
             logger.info(
-                f"✅ Ollama: {llm_status['model']} disponible → LLM activado"
+                f"✅ Zhipu GLM: {llm_status['model']} disponible → LLM activado"
             )
         else:
+            # Mostrar el error clasificado con código y descripción
+            error_code = llm_status.get("error_code", "?")
+            error_msg  = llm_status.get("error", "desconocido")
             logger.warning(
-                f"⚠️ Ollama no disponible → QAService en modo stub. "
-                f"Error: {llm_status.get('error', 'desconocido')}"
+                f"⚠️ Zhipu no disponible → QAService en modo stub\n"
+                f"   Código : {error_code}\n"
+                f"   Motivo : {error_msg}\n"
+                f"   Acción : Verifica saldo/credenciales en open.bigmodel.cn"
             )
     except Exception as e:
-        logger.warning(f"⚠️ Ollama falló al iniciar: {e} → modo stub")
+        logger.warning(f"⚠️ Zhipu falló al iniciar: {e} → modo stub")
 
     # ── STARTUP COMPLETO ──────────────────────────────────────────────
     startup_time = (time.perf_counter() - startup_start) * 1000
@@ -165,7 +169,6 @@ async def lifespan(app: FastAPI):
     logger.info(f"   API:  http://{settings.HOST}:{settings.PORT}/qa/ask")
     logger.info("=" * 60)
 
-    # ── SERVIR REQUESTS ───────────────────────────────────────────────
     yield
 
     # ── SHUTDOWN ──────────────────────────────────────────────────────
@@ -205,7 +208,6 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # ── CORS ──────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
@@ -214,10 +216,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── ROUTERS ───────────────────────────────────────────────────────
     app.include_router(qa_router)
 
-    # ── HEALTH CHECK GLOBAL ───────────────────────────────────────────
     @app.get("/health", tags=["Sistema"])
     async def global_health():
         """Health check global del backend."""
@@ -230,7 +230,6 @@ def create_app() -> FastAPI:
 
     @app.get("/", tags=["Sistema"])
     async def root():
-        """Raíz de la API."""
         return {
             "message": "Asistente Virtual - Backend API",
             "docs": "/docs",
@@ -260,6 +259,5 @@ if __name__ == "__main__":
         port=settings.PORT,
         reload=settings.RELOAD,
         log_level=settings.LOG_LEVEL.lower(),
-        # Silenciar access logs de uvicorn (usamos el nuestro)
         access_log=False,
     )

@@ -72,29 +72,44 @@ class Settings(BaseSettings):
     CELERY_TASK_TIMEOUT: int = 300            # 5 minutos
 
     # ===================================
-    # OLLAMA / LLM
+    # ZHIPU AI / LLM (reemplaza Ollama)
     # ===================================
-    OLLAMA_HOST: str = "localhost"
-    OLLAMA_PORT: int = 11434
-    OLLAMA_MODEL: str = "llama3.2:3b"
-    OLLAMA_TIMEOUT: int = 300                 # segundos
-    OLLAMA_MAX_TOKENS: int = 512
-    OLLAMA_TEMPERATURE: float = 0.1           # Bajo para respuestas consistentes
+    ZHIPU_API_KEY: str = Field(
+        default="95c160bb6fcf44b7b581b213c2e0390a.U4nuorngGxnp7P6i",
+        description="API Key de Zhipu AI"
+    )
+    ZHIPU_BASE_URL: str = Field(
+        default="https://open.bigmodel.cn/api/paas/v4/",
+        description="Base URL de la API de Zhipu (compatible con OpenAI)"
+    )
+    ZHIPU_MODEL: str = Field(
+        default="glm-4.6",
+        description="Modelo a usar en Zhipu AI"
+    )
+    ZHIPU_TIMEOUT: int = Field(
+        default=60,
+        description="Timeout en segundos para llamadas a la API"
+    )
+    ZHIPU_MAX_TOKENS: int = Field(
+        default=512,
+        description="Máximo de tokens a generar"
+    )
+    ZHIPU_TEMPERATURE: float = Field(
+        default=0.1,
+        description="Temperatura de generación (0.0 - 2.0)"
+    )
 
     # ===================================
     # BÚSQUEDA HÍBRIDA
     # ===================================
-    # BM25
     BM25_TOP_K: int = 10
     BM25_MIN_SCORE: float = 0.0
 
-    # FAISS / Vector Search
     VECTOR_TOP_K: int = 10
     VECTOR_MIN_SCORE: float = 0.0
 
-    # RRF Fusion
-    RRF_K: int = 60                           # Constante RRF (recomendado: 60)
-    HYBRID_TOP_K: int = 5                     # Resultados finales
+    RRF_K: int = 60
+    HYBRID_TOP_K: int = 5
 
     # ===================================
     # CHROMADB
@@ -107,23 +122,23 @@ class Settings(BaseSettings):
     # ===================================
     # CIRCUIT BREAKER
     # ===================================
-    CB_FAIL_MAX: int = 5                      # Fallos antes de abrir
-    CB_RESET_TIMEOUT: int = 60               # Segundos para intentar reset
-    CB_EXPECTED_EXCEPTION: str = "Exception"  # Tipo de excepción a capturar
+    CB_FAIL_MAX: int = 5
+    CB_RESET_TIMEOUT: int = 60
+    CB_EXPECTED_EXCEPTION: str = "Exception"
 
     # ===================================
     # CACHE LOCAL (cachetools)
     # ===================================
-    CACHE_MAX_SIZE: int = 500                 # Respuestas en memoria
-    CACHE_TTL: int = 1800                     # 30 minutos
+    CACHE_MAX_SIZE: int = 500
+    CACHE_TTL: int = 1800
 
     # ===================================
     # CORS
     # ===================================
     CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",              # Frontend React
-        "http://localhost:8080",              # Alternativa frontend
-        "http://localhost:8001",              # Embedding Service
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://localhost:8001",
     ]
 
     # ===================================
@@ -147,11 +162,11 @@ class Settings(BaseSettings):
             raise ValueError(f"LOG_LEVEL debe ser uno de: {allowed}")
         return v_upper
 
-    @field_validator("OLLAMA_TEMPERATURE")
+    @field_validator("ZHIPU_TEMPERATURE")
     @classmethod
     def validate_temperature(cls, v: float) -> float:
         if not 0.0 <= v <= 2.0:
-            raise ValueError("OLLAMA_TEMPERATURE debe estar entre 0.0 y 2.0")
+            raise ValueError("ZHIPU_TEMPERATURE debe estar entre 0.0 y 2.0")
         return v
 
     @field_validator("RRF_K")
@@ -200,11 +215,6 @@ class Settings(BaseSettings):
             )
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
-    @property
-    def ollama_url(self) -> str:
-        """URL completa de Ollama."""
-        return f"http://{self.OLLAMA_HOST}:{self.OLLAMA_PORT}"
-
 
 @lru_cache()
 def get_settings() -> Settings:
@@ -213,16 +223,6 @@ def get_settings() -> Settings:
 
     El decorador @lru_cache garantiza que Settings()
     se instancia una sola vez en toda la aplicación.
-
-    Returns:
-        Instancia de Settings con toda la configuración
-
-    Example:
-        ```python
-        from config import get_settings
-        settings = get_settings()
-        print(settings.PORT)  # 8000
-        ```
     """
     return Settings()
 

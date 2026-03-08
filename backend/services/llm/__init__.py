@@ -1,21 +1,21 @@
 """
-Módulo LLM: Cliente Ollama + Prompt Builder + Response Parser.
+Módulo LLM: Cliente Zhipu GLM-4.6 + Prompt Builder + Response Parser.
 
-Integra el LLM al pipeline RAG conectándolo con el QAService de Parte 5.
+Reemplaza Ollama por la API de Zhipu AI (compatible con OpenAI).
 
 Exports principales:
-    - OllamaClient: Cliente async para Ollama
+    - ZhipuClient: Cliente async para Zhipu GLM
     - PromptBuilder: Constructor de prompts RAG
     - ResponseParser: Limpieza de respuestas LLM
-    - get_ollama_client: Singleton del cliente
+    - get_zhipu_client: Singleton del cliente
     - setup_llm: Función de integración con QAService
 
 Usage:
     ```python
-    # Integración completa en main.py (Parte 8):
+    # Integración completa en main.py:
     from services.llm import setup_llm
 
-    # Conecta Ollama con QAService automáticamente
+    # Conecta Zhipu con QAService automáticamente
     await setup_llm()
 
     # Ahora QAService usa LLM real en vez del stub
@@ -23,7 +23,7 @@ Usage:
 """
 import logging
 
-from .ollama_client import OllamaClient, get_ollama_client
+from .zhipu_client import ZhipuClient, get_zhipu_client
 from .prompt_builder import PromptBuilder, SYSTEM_PROMPT_QA
 from .response_parser import ResponseParser, ParsedResponse, get_response_parser
 
@@ -34,40 +34,26 @@ async def setup_llm() -> dict:
     """
     Inicializa el LLM e inyecta el cliente en QAService.
 
-    Esta función se llama en el startup de FastAPI (Parte 8).
+    Esta función se llama en el startup de FastAPI.
 
     Pasos:
-    1. Crear OllamaClient
-    2. Verificar que Ollama está corriendo
-    3. Verificar que el modelo está disponible
-    4. Inyectar en QAService (activa LLM real, desactiva stub)
+    1. Crear ZhipuClient
+    2. Verificar que la API responde
+    3. Inyectar en QAService (activa LLM real, desactiva stub)
 
     Returns:
         Dict con status de la inicialización:
         {
-            "ollama_status": "healthy" | "unhealthy",
-            "model": "mistral",
+            "llm_status": "healthy" | "unhealthy",
+            "model": "glm-4.6",
             "model_available": True | False,
             "llm_injected": True | False,
             "error": None | "mensaje"
         }
-
-    Example:
-        ```python
-        # En lifespan de FastAPI:
-        from services.llm import setup_llm
-
-        @asynccontextmanager
-        async def lifespan(app: FastAPI):
-            llm_status = await setup_llm()
-            if not llm_status["model_available"]:
-                logger.warning("⚠️ Modelo no disponible, usando stub")
-            yield
-        ```
     """
     from services.qa import get_qa_service
 
-    client = get_ollama_client()
+    client = get_zhipu_client()
 
     # Verificar health
     health = await client.health_check()
@@ -80,19 +66,19 @@ async def setup_llm() -> dict:
         qa_service.set_llm_client(client)
         llm_injected = True
         logger.info(
-            f"✅ LLM activado: {health['model']} → QAService conectado"
+            f"✅ LLM activado: {health['model']} (Zhipu) → QAService conectado"
         )
     else:
         logger.warning(
-            f"⚠️ Ollama no disponible o modelo ausente → QAService usa stub. "
+            f"⚠️ Zhipu no disponible → QAService usa stub. "
             f"Health: {health}"
         )
 
     return {
-        "ollama_status": health["status"],
+        "llm_status": health["status"],
         "model": health["model"],
         "model_available": health["model_available"],
-        "available_models": health.get("models", []),
+        "provider": "zhipu",
         "llm_injected": llm_injected,
         "error": health.get("error"),
     }
@@ -100,8 +86,8 @@ async def setup_llm() -> dict:
 
 __all__ = [
     # Cliente
-    "OllamaClient",
-    "get_ollama_client",
+    "ZhipuClient",
+    "get_zhipu_client",
     # Prompt
     "PromptBuilder",
     "SYSTEM_PROMPT_QA",

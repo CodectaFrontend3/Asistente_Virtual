@@ -6,26 +6,25 @@ import logging
 import time
 from typing import Optional
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, APIStatusError, APIConnectionError, APITimeoutError
 
 from config import settings
 
 logger = logging.getLogger(__name__)
 
+# Códigos de error conocidos de Zhipu AI
+_ZHIPU_ERROR_CODES = {
+    "1113": "Saldo insuficiente — recarga en open.bigmodel.cn",
+    "1101": "API Key inválida o expirada",
+    "1102": "API Key sin permisos para este modelo",
+    "1110": "Límite de peticiones por minuto alcanzado (rate limit)",
+    "1111": "Límite diario de tokens alcanzado",
+}
+
 
 class ZhipuClient:
     """
     Cliente async para Zhipu AI (GLM-4.6) con API compatible con OpenAI.
-
-    Límites de tokens:
-        - System prompt:  ~200 tokens
-        - Contexto RAG:   ~375 tokens  (3 fuentes × ~500 chars)
-        - Query usuario:  ~50 tokens
-        - Respuesta:      250 tokens   (max_tokens=250)
-        - Total usado:    ~875 tokens  ✅
-
-    Historial de conversación:
-        - Máx 3 turnos anteriores (user+assistant) = ~300 tokens extra
     """
 
     MAX_CONTEXT_CHARS = 3000
@@ -67,42 +66,17 @@ class ZhipuClient:
         system_prompt: Optional[str] = None,
         conversation_history: Optional[list] = None,
     ) -> str:
-        """
-        Genera respuesta RAG dado query + contexto + historial opcional.
-
-        Args:
-            query: Pregunta del usuario (máx 500 chars)
-            context: Contexto de búsqueda híbrida (se trunca a MAX_CONTEXT_CHARS)
-            system_prompt: System prompt personalizado (None = default)
-            conversation_history: Lista de turnos anteriores:
-                [
-                    {"role": "user",      "content": "¿Hacen envíos?"},
-                    {"role": "assistant", "content": "Sí, enviamos a todo el país."},
-                ]
-
-        Returns:
-            Respuesta generada por el modelo
-
-        Raises:
-            Exception: Si falla la llamada a la API
-        """
         from .prompt_builder import PromptBuilder, SYSTEM_PROMPT_QA
 
-        # Truncar contexto si excede límite
         context_truncated = context[:self.MAX_CONTEXT_CHARS]
-
-        # System prompt
         sys_prompt = system_prompt or SYSTEM_PROMPT_QA
 
-        # Construir mensajes
         messages = [{"role": "system", "content": sys_prompt}]
 
-        # Historial (máx MAX_HISTORY_TURNS turnos)
         if conversation_history:
             history = conversation_history[-(self.MAX_HISTORY_TURNS * 2):]
             messages.extend(history)
 
-        # Prompt del usuario con contexto RAG
         user_content = PromptBuilder.build_user_message(
             query=query,
             context=context_truncated,
@@ -132,12 +106,37 @@ class ZhipuClient:
 
             return content.strip()
 
+        except APIStatusError as e:
+            latency = (time.perf_counter() - start_time) * 1000
+            error_body = {}
+            try:
+                error_body = e.response.json()
+            except Exception:
+                pass
+            code = str(error_body.get("error", {}).get("code", e.status_code))
+            msg_zh = error_body.get("error", {}).get("message", "")
+            friendly = _ZHIPU_ERROR_CODES.get(code, f"Error HTTP {e.status_code}")
+            logger.error(
+                f"❌ Zhipu API error [{code}] en {latency:.0f}ms | "
+                f"{friendly} | msg_original: {msg_zh}"
+            )
+            raise RuntimeError(f"[Zhipu {code}] {friendly}") from e
+
+        except APIConnectionError as e:
+            latency = (time.perf_counter() - start_time) * 1000
+            logger.error(f"❌ Zhipu sin conexión después de {latency:.0f}ms: {e}")
+            raise RuntimeError("No se pudo conectar con Zhipu AI — verifica tu internet") from e
+
+        except APITimeoutError as e:
+            latency = (time.perf_counter() - start_time) * 1000
+            logger.error(f"⏰ Zhipu timeout después de {latency:.0f}ms")
+            raise RuntimeError(f"Zhipu AI no respondió en {self.timeout}s") from e
+
         except Exception as e:
             latency = (time.perf_counter() - start_time) * 1000
-            error_type = type(e).__name__
-            error_msg  = str(e).strip() or error_type
             logger.error(
-                f"❌ Error Zhipu ({error_type}) después de {latency:.0f}ms: {error_msg}"
+                f"❌ Error inesperado Zhipu en {latency:.0f}ms: "
+                f"{type(e).__name__}: {e}"
             )
             raise
 
@@ -145,33 +144,59 @@ class ZhipuClient:
 
     async def health_check(self) -> dict:
         """
-        Verifica que la API de Zhipu responde correctamente.
-
-        Returns:
-            Dict con status, model e info adicional.
+        Verifica que la API de Zhipu responde.
+        Clasifica el error con código y mensaje amigable si falla.
         """
         try:
-            # Llamada mínima para verificar conectividad
-            response = await self._client.chat.completions.create(
+            await self._client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": "hola"}],
                 max_tokens=5,
             )
+            logger.info(f"✅ Zhipu health check OK — model={self.model}")
             return {
                 "status": "healthy",
                 "model": self.model,
                 "model_available": True,
                 "provider": "zhipu",
                 "base_url": self.base_url,
+                "error_code": None,
+                "error": None,
             }
-        except Exception as e:
-            logger.warning(f"⚠️ Zhipu health check falló: {e}")
+
+        except APIStatusError as e:
+            error_body = {}
+            try:
+                error_body = e.response.json()
+            except Exception:
+                pass
+            code = str(error_body.get("error", {}).get("code", e.status_code))
+            msg_zh = error_body.get("error", {}).get("message", str(e))
+            friendly = _ZHIPU_ERROR_CODES.get(code, f"Error HTTP {e.status_code}")
+            logger.warning(
+                f"⚠️ Zhipu health check falló | "
+                f"código={code} | {friendly} | original: {msg_zh}"
+            )
             return {
                 "status": "unhealthy",
                 "model": self.model,
                 "model_available": False,
                 "provider": "zhipu",
+                "error_code": code,
+                "error": friendly,
+                "error_original": msg_zh,
+            }
+
+        except Exception as e:
+            logger.warning(f"⚠️ Zhipu health check falló: {type(e).__name__}: {e}")
+            return {
+                "status": "unhealthy",
+                "model": self.model,
+                "model_available": False,
+                "provider": "zhipu",
+                "error_code": None,
                 "error": str(e),
+                "error_original": str(e),
             }
 
 
