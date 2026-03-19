@@ -72,11 +72,35 @@ class Settings(BaseSettings):
     CELERY_TASK_TIMEOUT: int = 300            # 5 minutos
 
     # ===================================
-    # ZHIPU AI / LLM (reemplaza Ollama)
+    # GOOGLE GEMINI 1.5 FLASH / LLM
+    # ===================================
+    GEMINI_API_KEY: str = Field(
+        default="#####",
+        description="API Key de Google Gemini"
+    )
+    GEMINI_MODEL: str = Field(
+        default="gemini-2.5-flash",
+        description="Modelo a usar en Google Gemini"
+    )
+    GEMINI_TIMEOUT: int = Field(
+        default=60,
+        description="Timeout en segundos para llamadas a la API"
+    )
+    GEMINI_MAX_TOKENS: int = Field(
+        default=512,
+        description="Máximo de tokens a generar"
+    )
+    GEMINI_TEMPERATURE: float = Field(
+        default=0.3,
+        description="Temperatura de generación (0.0 - 2.0)"
+    )
+
+    # ===================================
+    # ZHIPU AI / LLM (Legacy - mantenido para compatibilidad)
     # ===================================
     ZHIPU_API_KEY: str = Field(
         default="95c160bb6fcf44b7b581b213c2e0390a.U4nuorngGxnp7P6i",
-        description="API Key de Zhipu AI"
+        description="API Key de Zhipu AI (Legacy)"
     )
     ZHIPU_BASE_URL: str = Field(
         default="https://open.bigmodel.cn/api/paas/v4/",
@@ -167,6 +191,13 @@ class Settings(BaseSettings):
     def validate_temperature(cls, v: float) -> float:
         if not 0.0 <= v <= 2.0:
             raise ValueError("ZHIPU_TEMPERATURE debe estar entre 0.0 y 2.0")
+        return v
+
+    @field_validator("GEMINI_TEMPERATURE")
+    @classmethod
+    def validate_gemini_temperature(cls, v: float) -> float:
+        if not 0.0 <= v <= 2.0:
+            raise ValueError("GEMINI_TEMPERATURE debe estar entre 0.0 y 2.0")
         return v
 
     @field_validator("RRF_K")

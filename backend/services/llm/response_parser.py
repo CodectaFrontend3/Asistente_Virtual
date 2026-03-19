@@ -134,11 +134,18 @@ class ResponseParser:
         # 2. Eliminar frases de relleno al inicio
         text = self._remove_filler_phrases(text)
 
-        # 3. Normalizar saltos de línea múltiples (máx 2)
-        text = re.sub(r"\n{3,}", "\n\n", text)
+        # 2.5. Limpiar Markdown (asteriscos, guiones bajos, etc.)
+        text = self._clean_markdown(text)
 
-        # 4. Normalizar espacios múltiples
-        text = re.sub(r" {2,}", " ", text)
+        # 3. Normalizar saltos de línea SOLO múltiples (3+ a 2)
+        # IMPORTANTE: Preservar saltos de línea dobles para estructura
+        text = re.sub(r"\n{4,}", "\n\n", text)
+
+        # 4. Normalizar espacios múltiples EN UNA LÍNEA (no entre líneas)
+        # Esto permite espacios entre párrafos pero evita múltiples espacios dentro de líneas
+        lines = text.split('\n')
+        lines = [re.sub(r"  +", " ", line) for line in lines]
+        text = '\n'.join(lines)
 
         # 5. Strip final
         text = text.strip()
@@ -249,6 +256,39 @@ class ResponseParser:
             return f"Respuesta demasiado larga ({len(text)} chars)"
 
         return None  # Válida
+
+    def _clean_markdown(self, text: str) -> str:
+        """
+        Limpia Markdown para texto plano.
+        
+        Convierte:
+        - **texto** → texto
+        - *texto* → texto
+        - __texto__ → texto
+        - _texto_ → texto
+        - `texto` → texto
+        
+        Args:
+            text: Texto potencialmente con Markdown
+            
+        Returns:
+            Texto limpio sin formatos Markdown
+        """
+        # Eliminar negrilla:** y *
+        text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # **texto** → texto
+        text = re.sub(r'\*(.*?)\*', r'\1', text)      # *texto* → texto
+        
+        # Eliminar subrayado __ y _
+        text = re.sub(r'__(.*?)__', r'\1', text)      # __texto__ → texto
+        text = re.sub(r'_(.*?)_', r'\1', text)        # _texto_ → texto
+        
+        # Eliminar código inline ` 
+        text = re.sub(r'`(.*?)`', r'\1', text)        # `texto` → texto
+        
+        # Limpiar saltos de línea múltiples (\n) pero preservar párrafos
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        return text
 
 
 # ---------------------------------------------------------------------------

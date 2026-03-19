@@ -1,13 +1,14 @@
 """
-Módulo LLM: Cliente Zhipu GLM-4.6 + Prompt Builder + Response Parser.
+Módulo LLM: Cliente Google Gemini 2.5 Flash + Prompt Builder + Response Parser.
 
-Reemplaza Ollama por la API de Zhipu AI (compatible con OpenAI).
+Utiliza la IA de Google Gemini 2.5 Flash para generación aumentada por 
+recuperación (RAG) con soporte de contexto muy grande y síntesis de datos.
 
 Exports principales:
-    - ZhipuClient: Cliente async para Zhipu GLM
+    - GeminiClient: Cliente async para Google Gemini 2.5 Flash
     - PromptBuilder: Constructor de prompts RAG
     - ResponseParser: Limpieza de respuestas LLM
-    - get_zhipu_client: Singleton del cliente
+    - get_gemini_client: Singleton del cliente
     - setup_llm: Función de integración con QAService
 
 Usage:
@@ -15,7 +16,7 @@ Usage:
     # Integración completa en main.py:
     from services.llm import setup_llm
 
-    # Conecta Zhipu con QAService automáticamente
+    # Conecta Gemini con QAService automáticamente
     await setup_llm()
 
     # Ahora QAService usa LLM real en vez del stub
@@ -23,7 +24,7 @@ Usage:
 """
 import logging
 
-from .zhipu_client import ZhipuClient, get_zhipu_client
+from .gemini_client import GeminiClient, get_gemini_client
 from .prompt_builder import PromptBuilder, SYSTEM_PROMPT_QA
 from .response_parser import ResponseParser, ParsedResponse, get_response_parser
 
@@ -32,12 +33,12 @@ logger = logging.getLogger(__name__)
 
 async def setup_llm() -> dict:
     """
-    Inicializa el LLM e inyecta el cliente en QAService.
+    Inicializa el LLM (Gemini 1.5 Flash) e inyecta el cliente en QAService.
 
     Esta función se llama en el startup de FastAPI.
 
     Pasos:
-    1. Crear ZhipuClient
+    1. Crear GeminiClient
     2. Verificar que la API responde
     3. Inyectar en QAService (activa LLM real, desactiva stub)
 
@@ -45,7 +46,7 @@ async def setup_llm() -> dict:
         Dict con status de la inicialización:
         {
             "llm_status": "healthy" | "unhealthy",
-            "model": "glm-4.6",
+            "model": "gemini-1.5-flash",
             "model_available": True | False,
             "llm_injected": True | False,
             "error": None | "mensaje"
@@ -53,7 +54,7 @@ async def setup_llm() -> dict:
     """
     from services.qa import get_qa_service
 
-    client = get_zhipu_client()
+    client = get_gemini_client()
 
     # Verificar health
     health = await client.health_check()
@@ -66,11 +67,11 @@ async def setup_llm() -> dict:
         qa_service.set_llm_client(client)
         llm_injected = True
         logger.info(
-            f"✅ LLM activado: {health['model']} (Zhipu) → QAService conectado"
+            f"✅ LLM activado: {health['model']} (Gemini) → QAService conectado"
         )
     else:
         logger.warning(
-            f"⚠️ Zhipu no disponible → QAService usa stub. "
+            f"⚠️ Gemini no disponible → QAService usa stub. "
             f"Health: {health}"
         )
 
@@ -78,7 +79,7 @@ async def setup_llm() -> dict:
         "llm_status": health["status"],
         "model": health["model"],
         "model_available": health["model_available"],
-        "provider": "zhipu",
+        "provider": "gemini",
         "llm_injected": llm_injected,
         "error": health.get("error"),
     }
@@ -86,8 +87,8 @@ async def setup_llm() -> dict:
 
 __all__ = [
     # Cliente
-    "ZhipuClient",
-    "get_zhipu_client",
+    "GeminiClient",
+    "get_gemini_client",
     # Prompt
     "PromptBuilder",
     "SYSTEM_PROMPT_QA",

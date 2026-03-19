@@ -6,7 +6,7 @@ Inicializa todos los servicios en el orden correcto:
     2. Redis Cache
     3. Embedding Service (HTTP client)
     4. Índices Q&A (carga desde disco o construye)
-    5. LLM Zhipu AI GLM-4.6 (inyecta en QAService)
+    5. LLM Google Gemini 2.5 Flash (inyecta en QAService)
 
 Luego levanta el servidor y registra los routers.
 """
@@ -138,28 +138,28 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ Error cargando índices: {e}")
 
-    # ── 4. LLM ZHIPU AI ───────────────────────────────────────────────
-    logger.info("🤖 [4/4] Conectando con Zhipu AI (GLM-4.6)...")
+    # ── 4. LLM GOOGLE GEMINI 2.5 FLASH ────────────────────────────────
+    logger.info("🤖 [4/4] Conectando con Google Gemini 2.5 Flash...")
     try:
         from services.llm import setup_llm
         llm_status = await setup_llm()
 
         if llm_status["llm_injected"]:
             logger.info(
-                f"✅ Zhipu GLM: {llm_status['model']} disponible → LLM activado"
+                f"✅ Gemini: {llm_status['model']} disponible → LLM activado"
             )
         else:
             # Mostrar el error clasificado con código y descripción
             error_code = llm_status.get("error_code", "?")
             error_msg  = llm_status.get("error", "desconocido")
             logger.warning(
-                f"⚠️ Zhipu no disponible → QAService en modo stub\n"
+                f"⚠️ Gemini no disponible → QAService en modo stub\n"
                 f"   Código : {error_code}\n"
                 f"   Motivo : {error_msg}\n"
-                f"   Acción : Verifica saldo/credenciales en open.bigmodel.cn"
+                f"   Acción : Verifica tu API Key en BACKEND_GEMINI_API_KEY (.env)"
             )
     except Exception as e:
-        logger.warning(f"⚠️ Zhipu falló al iniciar: {e} → modo stub")
+        logger.warning(f"⚠️ Gemini falló al iniciar: {e} → modo stub")
 
     # ── STARTUP COMPLETO ──────────────────────────────────────────────
     startup_time = (time.perf_counter() - startup_start) * 1000
